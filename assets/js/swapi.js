@@ -1,14 +1,6 @@
 $(document).ready(function() {
-  $.ajax({
-    url: "http://swapi.co/api/",
-    type: "GET",
-    dataType: "json"
-  }).done(function (data_from_server) {
-    // Aaaaand away we go
-    SWAPIDemo.initializeSWAPI(data_from_server);
-  }).fail(function () {
-    console.log("SWAPI GET Failed");
-  });
+
+  SWAPIDemo.initializeSWAPI();
 
   // Click Handler for Tab Bar
   $("#navbar").on( "shown.bs.tab", function(event) {
@@ -18,7 +10,8 @@ $(document).ready(function() {
 
 var SWAPIDemo = (function() {
 
-  var populate_active_tab = function(data_from_server, $active_tab) {
+  var populate_active_tab = function(data_from_server) {
+    var $active_tab = $(".tab-content .active");
 
     data_from_server["results"].forEach( function(result, index) {
       var panel_to_append = "";
@@ -46,6 +39,7 @@ var SWAPIDemo = (function() {
 
         };
       });
+
       panel_to_append += '</ul></div></div>';
       $active_tab.append(panel_to_append);
 
@@ -53,36 +47,47 @@ var SWAPIDemo = (function() {
 
   }
 
+  var get_SWAPI_data = function(url_to_get, get_response_callback) {
+    $.ajax({
+      url: url_to_get,
+      type: "GET",
+      dataType: "json"
+    }).done(function (data_from_server) {
+      get_response_callback(data_from_server);
+    }).fail(function () {
+      console.log("SWAPI GET Failed");
+      return "SWAPI GET Failed!";
+    });
+  }
+
+  var SWAPI_initial_get_callback = function(data_from_server) {
+    SWAPIDemo.data_structure  = data_from_server;
+
+    Object.keys(data_from_server).forEach( function( key, index ) {
+      var index_plus_one = index + 1;
+      $("#navbar").append('<li> <a href="#swapi_' + index_plus_one + '" data-toggle="tab">' + key + '</a></li>');
+      $(".tab-content").append('<div class="tab-pane" id=swapi_' + index_plus_one + ' data-url="' + SWAPIDemo.data_structure[key] + '"></div>');
+    });
+  }
+
   return {
-    initializeSWAPI: function(data_from_server) {
-      SWAPIDemo.data_structure  = data_from_server;
+    initializeSWAPI: function() {
+      var root_url = $("#navbar").data('url');
 
-      Object.keys(data_from_server).forEach( function( key, index ) {
-        var index_plus_one = index + 1;
-        $("#navbar").append('<li> <a href="#swapi_' + index_plus_one + '" data-toggle="tab">' + key + '</a></li>');
-        $(".tab-content").append('<div class="tab-pane" id=swapi_' + index_plus_one + ' data-url="' + SWAPIDemo.data_structure[key] + '"></div>');
-      });
-
+      get_SWAPI_data(root_url, SWAPI_initial_get_callback);
     },
 
     handle_navbar_click: function() {
       var $active_tab = $(".tab-content .active");
-      var url_to_get = $active_tab.data("url");
 
-      // Lets keep the GETs to only if we need them
-      if ( $active_tab.children().length == 0 ) {
-        $.ajax({
-          url: url_to_get,
-          type: "GET",
-          dataType: "json"
-        }).done(function (data_from_server) {
-          populate_active_tab(data_from_server, $active_tab);
-
-        }).fail(function () {
-          console.log("SWAPI GET Failed");
-          $active_tab.append("SWAPI GET Failed!");
-        });
+      // Lets not perform a GET if the tab is already populated
+      if ( $active_tab.children().length != 0 ) {
+        return;
       };
+
+      var url_to_get = $active_tab.data("url");
+      get_SWAPI_data(url_to_get, populate_active_tab);
     }
+
   }
 })();
